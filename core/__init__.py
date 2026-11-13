@@ -1,0 +1,3 @@
+"""
+WinIsland Core Package
+"""

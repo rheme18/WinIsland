@@ -1,0 +1,3 @@
+WinIsland; medya kontrollerini, pil ve sistem durumunu, hızlı ayarları, takvim ve görevleri sade bir arayüzde toplar.
+
+Kurulum dilini seçin, MIT lisansını inceleyip kabul edin, kurulum konumunu belirleyin ve tamamlandığında WinIsland'ı hemen başlatın.

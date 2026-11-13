@@ -1,0 +1,3 @@
+WinIsland brings your essential Windows information into one compact, calm interface: media controls, battery and system status, quick settings, calendar and tasks.
+
+Choose your setup language, review the MIT license, select where to install, and finish with the option to launch WinIsland immediately.

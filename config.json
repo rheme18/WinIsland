@@ -1,0 +1,9 @@
+{
+  "language": "en",
+  "scroll_action": "switch_page",
+  "launch_at_startup": false,
+  "show_page_dots": true,
+  "acrylic_blur": false,
+  "ambient_glow": true,
+  "gemini_api_key": ""
+}
