@@ -7,6 +7,7 @@ from typing import Optional
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QClipboard, QPixmap
 from PyQt6.QtWidgets import QApplication
+from modules.i18n import t
 
 
 class ClipboardWatcher(QObject):
@@ -46,7 +47,7 @@ class ClipboardWatcher(QObject):
                     pixmap = QPixmap.fromImage(image)
                     dims = f"{pixmap.width()}×{pixmap.height()} px"
                     self.clipboard_event.emit(
-                        "Görsel Kopyalandı",
+                        t("alert_clipboard_image"),
                         dims,
                         pixmap,
                         "image"
@@ -66,7 +67,7 @@ class ClipboardWatcher(QObject):
                 if len(clean_preview) > 28:
                     clean_preview = clean_preview[:25] + "..."
 
-                title = f"Kopyalandı ({char_count} kr)"
+                title = t("alert_clipboard_text", count=char_count)
                 subtitle = f'"{clean_preview}"'
                 self.clipboard_event.emit(title, subtitle, None, "clipboard")
 

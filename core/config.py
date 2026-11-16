@@ -25,11 +25,11 @@ class Dimensions:
     HOVER_HEIGHT: int = 36
 
     # 4. Expanded Full Dashboard State — Spacious layout with dynamic per-section heights
-    EXPANDED_WIDTH: int = 620
+    EXPANDED_WIDTH: int = 736
     EXPANDED_HEIGHT: int = 175
     EXPANDED_CC_HEIGHT: int = 210
     EXPANDED_CAL_HEIGHT: int = 255
-    EXPANDED_PIXEL_HEIGHT: int = 245
+    EXPANDED_PIXEL_HEIGHT: int = 285
     EXPANDED_AI_HEIGHT: int = 280
     RADIUS_EXPANDED: int = 26
 
@@ -56,6 +56,8 @@ class Thresholds:
     CPU_CRITICAL_PERCENT: float = 98.0
     RAM_CRITICAL_PERCENT: float = 98.0
     BATTERY_LOW_PERCENT: float = 20.0
+    DISK_LOW_PERCENT: float = 90.0
+    DISK_CLEAR_PERCENT: float = 85.0
 
 
 class Palette:

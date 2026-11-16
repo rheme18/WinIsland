@@ -6,7 +6,7 @@
   <p>Turkish and English interface · Designed for Windows 10 and 11</p>
 
   <p>
-    <img alt="Build 0.9.7" src="https://img.shields.io/badge/BUILD-0.9.7-34383f?style=for-the-badge&labelColor=111214" />
+    <img alt="Build 0.9.15" src="https://img.shields.io/badge/BUILD-0.9.15-34383f?style=for-the-badge&labelColor=111214" />
     <img alt="Windows 10 and 11 x64" src="https://img.shields.io/badge/PLATFORM-Windows%2010%20%2F%2011%20x64-4a5059?style=for-the-badge&labelColor=111214" />
     <img alt="PyQt6" src="https://img.shields.io/badge/INTERFACE-PyQt6-5b626c?style=for-the-badge&labelColor=111214" />
     <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/LICENSE-MIT-d9dde2?style=for-the-badge&labelColor=111214" /></a>
@@ -18,8 +18,8 @@ WinIsland is an open-source Windows desktop companion built around a compact, an
 ## Features
 
 - Compact capsule with media and system indicators
-- Horizontal notification banners for battery, device, recording and other events
-- Horizontal hover preview with clock, battery, weather, task summary and CPU/RAM status
+- Horizontal notification banners for battery, low storage, device, recording, microphone/camera activity and audio/brightness changes
+- Horizontal hover preview with clock, battery, weather and task summary
 - Click to open the dashboard; scroll to move between pages
 - Calendar and locally stored to-do list with scrollable tasks and working checkmarks
 - Media playback, seeking, volume and mute controls

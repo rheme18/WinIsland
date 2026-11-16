@@ -52,9 +52,11 @@ class PetWidget(QWidget):
         self._is_blinking: bool = False
         self._animations_enabled: bool = True
 
-        # 30 FPS animation loop
+        # Keep the small vector pet animation fluid while visible. The timer
+        # is paused automatically whenever the lounge is hidden.
         self._timer = QTimer(self)
-        self._timer.setInterval(33)
+        self._timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._timer.setInterval(16)
         self._timer.timeout.connect(self._on_tick)
         self._update_tooltip()
         I18nManager.get_instance().language_changed.connect(lambda _lang: self._update_tooltip())
@@ -529,7 +531,7 @@ class PetLoungeWidget(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(40)
+        self.setFixedHeight(56)
         self._current_state = PetState.IDLE
         self._current_stats = None
 
@@ -537,8 +539,8 @@ class PetLoungeWidget(QWidget):
         layout.setContentsMargins(6, 0, 6, 0)
         layout.setSpacing(8)
 
-        # Pixel Avatar (42px detailed)
-        self.pet_avatar = PetWidget(size=40, species=PetSpecies.CAT, parent=self)
+        # Match the full visible avatar to a comfortable mouse target.
+        self.pet_avatar = PetWidget(size=56, species=PetSpecies.CAT, parent=self)
         self.pet_avatar.clicked.connect(self._on_avatar_clicked)
         layout.addWidget(self.pet_avatar)
 

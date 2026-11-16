@@ -5,7 +5,6 @@ and dual sleek monochrome sliders for Volume and Brightness.
 """
 
 import subprocess
-import os
 from typing import Optional
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF
 from PyQt6.QtGui import QPainter, QColor, QFont, QPen, QBrush, QPainterPath
@@ -17,6 +16,8 @@ from core.config import Palette, Typography
 from modules.i18n import t, I18nManager
 from modules.brightness import BrightnessManager
 from ui.slider import ModernSlider
+
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
 
 class SliderVectorIcon(QWidget):
@@ -283,19 +284,19 @@ class IOSControlCenterWidget(QWidget):
         grid.addWidget(self.tile_night, 0, 3)
 
         # Row 2 of tiles
-        self.tile_snip = AppleSquircleTile("snip", "Kırp", self)
+        self.tile_snip = AppleSquircleTile("snip", t("cc_snip"), self)
         self.tile_snip.clicked.connect(self.take_screenshot_requested.emit)
         grid.addWidget(self.tile_snip, 1, 0)
 
-        self.tile_mic = AppleSquircleTile("mic_mute", "Mikrofon", self)
+        self.tile_mic = AppleSquircleTile("mic_mute", t("cc_mic_mute"), self)
         self.tile_mic.clicked.connect(self._toggle_mic_mute)
         grid.addWidget(self.tile_mic, 1, 1)
 
-        self.tile_lock = AppleSquircleTile("lock", "Kilitle", self)
+        self.tile_lock = AppleSquircleTile("lock", t("cc_lock"), self)
         self.tile_lock.clicked.connect(self.lock_pc_requested.emit)
         grid.addWidget(self.tile_lock, 1, 2)
 
-        self.tile_settings = AppleSquircleTile("settings", "Ayarlar", self)
+        self.tile_settings = AppleSquircleTile("settings", t("cc_settings"), self)
         self.tile_settings.clicked.connect(self.open_settings_requested.emit)
         grid.addWidget(self.tile_settings, 1, 3)
 
@@ -308,13 +309,13 @@ class IOSControlCenterWidget(QWidget):
         self.slider_bri.setValue(val)
 
     def _open_wifi_settings(self) -> None:
-        os.system("start ms-settings:network-wifi")
+        subprocess.Popen(["explorer.exe", "ms-settings:network-wifi"], creationflags=_NO_WINDOW)
 
     def _open_bt_settings(self) -> None:
-        os.system("start ms-settings:bluetooth")
+        subprocess.Popen(["explorer.exe", "ms-settings:bluetooth"], creationflags=_NO_WINDOW)
 
     def _open_night_light(self) -> None:
-        os.system("start ms-settings:nightlight")
+        subprocess.Popen(["explorer.exe", "ms-settings:nightlight"], creationflags=_NO_WINDOW)
 
     def _toggle_dnd(self) -> None:
         self.tile_dnd.set_active(not self.tile_dnd.is_active())

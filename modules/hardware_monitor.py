@@ -8,6 +8,7 @@ import time
 import psutil
 from typing import Set, Dict
 from PyQt6.QtCore import QThread, pyqtSignal
+from modules.i18n import t
 
 
 class HardwareMonitor(QThread):
@@ -52,16 +53,16 @@ class HardwareMonitor(QThread):
                 for drive, dtype in current_drives.items():
                     if drive not in self._known_drives:
                         clean_name = drive.rstrip("\\")
-                        title = "USB Sürücü Takıldı" if dtype == "removable" else "Yeni Sürücü Bağlandı"
-                        subtitle = f"Sürücü ({clean_name}) hazır"
+                        title = t("alert_usb_connected_title") if dtype == "removable" else t("alert_drive_connected_title")
+                        subtitle = t("alert_drive_ready", drive=clean_name)
                         self.device_event.emit(True, title, subtitle, "usb")
 
                 # 2. Check for removed drives
                 for drive, dtype in self._known_drives.items():
                     if drive not in current_drives:
                         clean_name = drive.rstrip("\\")
-                        title = "USB Sürücü Çıkarıldı" if dtype == "removable" else "Sürücü Ayrıldı"
-                        subtitle = f"Sürücü ({clean_name}) çıkarıldı"
+                        title = t("alert_usb_removed_title") if dtype == "removable" else t("alert_drive_removed_title")
+                        subtitle = t("alert_drive_removed", drive=clean_name)
                         self.device_event.emit(False, title, subtitle, "usb")
 
             self._known_drives = current_drives

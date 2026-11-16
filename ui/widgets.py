@@ -8,6 +8,7 @@ import math
 import subprocess
 import ctypes
 import os
+import time
 from typing import Optional, List
 from PyQt6.QtCore import (
     Qt, QTimer, QRectF, pyqtSignal, pyqtProperty, QPointF, QUrl, QMimeData,
@@ -159,6 +160,18 @@ class VectorIcon(QWidget):
             painter.setPen(QPen(Palette.ACCENT_CRITICAL, 1.4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
             painter.drawLine(QPointF(ox + sw * 0.70, oy + sw * 0.36), QPointF(ox + sw * 0.90, oy + sw * 0.64))
             painter.drawLine(QPointF(ox + sw * 0.90, oy + sw * 0.36), QPointF(ox + sw * 0.70, oy + sw * 0.64))
+
+        elif self.icon_type == "storage":
+            drive = QRectF(w * 0.18, h * 0.24, w * 0.64, h * 0.54)
+            painter.setPen(QPen(self.color, 1.4, Qt.PenStyle.SolidLine,
+                                Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(drive, 2.5, 2.5)
+            painter.drawLine(QPointF(drive.left() + 1.5, drive.bottom() - 4.0),
+                             QPointF(drive.right() - 1.5, drive.bottom() - 4.0))
+            painter.setBrush(QBrush(self.color))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(QPointF(drive.right() - 3.5, drive.bottom() - 1.8), 1.0, 1.0)
 
         elif self.icon_type == "usb":
             cx = w / 2.0; cy = h / 2.0
@@ -371,7 +384,7 @@ class ActionButton(QPushButton):
         if label:
             self.setToolTip(label)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedHeight(24)
+        self.setFixedHeight(30)
         self._hover_progress: float = 0.0
         self._press_offset: float = 0.0
         self._hover_anim: Optional[QPropertyAnimation] = None
@@ -442,12 +455,16 @@ class ActionButton(QPushButton):
 
         # Draw mini vector icon if icon_type is set
         has_icon = bool(self.icon_type)
-        ix = 8.0
+        ix = 9.0
         iy = (h - 10.0) / 2.0 + po
         icon_color = QColor(255, 255, 255, int(190 + 65 * p))
 
         if has_icon:
-            painter.setPen(QPen(icon_color, 1.25, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            painter.save()
+            painter.translate(ix + 4.5, iy + 4.5)
+            painter.scale(1.2, 1.2)
+            painter.translate(-(ix + 4.5), -(iy + 4.5))
+            painter.setPen(QPen(icon_color, 1.35, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
             painter.setBrush(Qt.BrushStyle.NoBrush)
 
             if self.icon_type == "lock":
@@ -498,13 +515,15 @@ class ActionButton(QPushButton):
 
         # Typography: Crisp bold modern Apple font
         t_val = int(220 + 35 * p)
-        font = QFont("Segoe UI Semibold", 8, QFont.Weight.Bold)
+        if has_icon:
+            painter.restore()
+        font = QFont("Segoe UI Semibold", 9, QFont.Weight.Bold)
         painter.setFont(font)
         painter.setPen(QColor(t_val, t_val, t_val))
 
         clean_label = self.label.strip()
         if has_icon:
-            painter.drawText(QRectF(ix + 11.0, po, w - ix - 13.0, h),
+            painter.drawText(QRectF(ix + 14.0, po, w - ix - 17.0, h),
                              Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, clean_label)
         else:
             painter.drawText(QRectF(0, po, w, h), Qt.AlignmentFlag.AlignCenter, clean_label)
@@ -1068,7 +1087,9 @@ class NavIconButton(QPushButton):
     def __init__(self, icon_type: str, tooltip: str, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.icon_type = icon_type
-        self.setFixedSize(36, 34)
+        # Large, forgiving hit target so Pixel and the other nav items respond
+        # across their full visible area (not just along an edge).
+        self.setFixedSize(48, 42)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(tooltip)
         self.setCheckable(True)
@@ -1128,7 +1149,7 @@ class NavIconButton(QPushButton):
         cx = w / 2.0
         cy = h / 2.0 + self._press_offset
         painter.translate(cx, cy)
-        painter.scale(1.18, 1.18)
+        painter.scale(1.45, 1.45)
         painter.translate(-cx, -cy)
         p = self._hover_progress
         checked = self.isChecked()
@@ -1139,14 +1160,14 @@ class NavIconButton(QPushButton):
         if checked:
             painter.setBrush(QBrush(QColor(255, 255, 255, 42)))
             painter.setPen(QPen(QColor(255, 255, 255, 75), 1.0))
-            painter.drawRoundedRect(rect, 8.0, 8.0)
+            painter.drawRoundedRect(rect, 12.0, 12.0)
             icon_color = QColor(255, 255, 255)
         else:
             bg_alpha = int(8 + 22 * p)
             border_alpha = int(14 + 32 * p)
             painter.setBrush(QBrush(QColor(255, 255, 255, bg_alpha)))
             painter.setPen(QPen(QColor(255, 255, 255, border_alpha), 1.0))
-            painter.drawRoundedRect(rect, 8.0, 8.0)
+            painter.drawRoundedRect(rect, 12.0, 12.0)
             ic_v = int(190 + 65 * p)
             icon_color = QColor(ic_v, ic_v, ic_v)
 
@@ -1304,7 +1325,7 @@ class SectionTileButton(QPushButton):
         self.raw_text = text
         self.setToolTip(tooltip or text)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedHeight(32)
+        self.setFixedHeight(38)
         self.setMinimumWidth(180)
         self.setStyleSheet("QPushButton { border: none; background: transparent; }")
 
@@ -1402,7 +1423,7 @@ class SectionTileButton(QPushButton):
         po = self._press_offset
 
         rect = QRectF(0.5, 0.5 + po, w - 1.0, h - 1.0)
-        r = 8.5
+        r = 13.0
 
         # 1. Glass background gradient
         grad = QLinearGradient(0, po, 0, h + po)
@@ -1426,11 +1447,11 @@ class SectionTileButton(QPushButton):
 
         # 4. Icon Badge on Left with Pure Vector Drawing
         x_cursor = 8.0
-        badge_rect = QRectF(x_cursor, 4.5 + po, 23.0, 23.0)
+        badge_rect = QRectF(x_cursor, 6.5 + po, 25.0, 25.0)
         badge_alpha = int(20 + 25 * p)
         painter.setBrush(QBrush(QColor(255, 255, 255, badge_alpha)))
         painter.setPen(QPen(QColor(255, 255, 255, int(25 + 35 * p)), 0.8))
-        painter.drawRoundedRect(badge_rect, 6.0, 6.0)
+        painter.drawRoundedRect(badge_rect, 8.0, 8.0)
 
         bx = badge_rect.center().x()
         by = badge_rect.center().y()
@@ -1493,11 +1514,11 @@ class SectionTileButton(QPushButton):
             painter.setBrush(QBrush(ic))
             painter.drawPath(sp)
 
-        x_cursor += 31.0
+        x_cursor += 34.0
 
         # 5. Title Text: Crisp bold Apple typography
         text_rect = QRectF(x_cursor, po, w - x_cursor - 18.0, h)
-        t_font = QFont("Segoe UI Semibold", 9, QFont.Weight.Bold)
+        t_font = QFont("Segoe UI Semibold", 10, QFont.Weight.Bold)
         painter.setFont(t_font)
         text_color = QColor(255, 255, 255) if p > 0.4 else QColor(235, 238, 245)
         painter.setPen(text_color)
@@ -1706,7 +1727,7 @@ class ModernClockWidget(QWidget):
         super().__init__(parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(t("clock_tooltip"))
-        self.setFixedSize(84, 26)
+        self.setFixedSize(92, 30)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 2, 4, 2)
@@ -1715,24 +1736,24 @@ class ModernClockWidget(QWidget):
 
         self.lbl_time = QLabel(self)
         self.lbl_time.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_time.setFixedWidth(40)
+        self.lbl_time.setFixedWidth(44)
         self.lbl_time.setStyleSheet(
-            "color: #FFFFFF; font-size: 11.5px; font-weight: 700; "
+            "color: #FFFFFF; font-size: 13px; font-weight: 700; "
             "font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif;"
         )
         layout.addWidget(self.lbl_time)
 
         self.lbl_date = QLabel(self)
         self.lbl_date.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_date.setFixedWidth(34)
-        self.lbl_date.setStyleSheet("color: #AEB3B9; font-size: 8.5px; font-weight: 700; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif;")
+        self.lbl_date.setFixedWidth(38)
+        self.lbl_date.setStyleSheet("color: #B8BEC7; font-size: 9.5px; font-weight: 700; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif;")
         layout.addWidget(self.lbl_date)
 
         self.setStyleSheet("""
             ModernClockWidget {
                 background: rgba(255, 255, 255, 10);
                 border: 1px solid rgba(255, 255, 255, 14);
-                border-radius: 8px;
+                border-radius: 15px;
             }
             ModernClockWidget:hover {
                 background: rgba(255, 255, 255, 22);
@@ -1781,27 +1802,27 @@ class WeatherPillWidget(QWidget):
     """
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedSize(76, 30)
+        self.setFixedSize(90, 34)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 3, 8, 3)
-        layout.setSpacing(6)
+        layout.setContentsMargins(7, 4, 7, 4)
+        layout.setSpacing(5)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.icon = VectorIcon("weather_sun", size=17, color=Palette.TEXT_PRIMARY)
+        self.icon = VectorIcon("weather_sun", size=22, color=Palette.TEXT_PRIMARY)
         layout.addWidget(self.icon)
 
         self.lbl_temp = QLabel("--°")
-        self.lbl_temp.setFixedWidth(36)
+        self.lbl_temp.setFixedWidth(44)
         self.lbl_temp.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
-        self.lbl_temp.setStyleSheet("color: #FFFFFF; font-size: 12px; font-weight: 700; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif;")
+        self.lbl_temp.setStyleSheet("color: #FFFFFF; font-size: 13px; font-weight: 700; font-family: 'Segoe UI Semibold', 'Segoe UI', sans-serif;")
         layout.addWidget(self.lbl_temp)
 
         self.setStyleSheet("""
             WeatherPillWidget {
                 background: rgba(255, 255, 255, 10);
                 border: 1px solid rgba(255, 255, 255, 14);
-                border-radius: 10px;
+                border-radius: 17px;
             }
             WeatherPillWidget:hover {
                 background: rgba(255, 255, 255, 22);
@@ -1880,7 +1901,7 @@ class VectorMoreButton(QPushButton):
     """Sleek minimalist 3-dot options button with smooth hover animation and tactile press feedback."""
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedSize(26, 26)
+        self.setFixedSize(32, 32)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(t("quick_options_tooltip"))
         I18nManager.get_instance().language_changed.connect(lambda _lang: self.setToolTip(t("quick_options_tooltip")))
@@ -1943,17 +1964,17 @@ class VectorMoreButton(QPushButton):
         bd_a = int(18 + 42 * p)
         painter.setBrush(QBrush(QColor(255, 255, 255, bg_a)))
         painter.setPen(QPen(QColor(255, 255, 255, bd_a), 1.0))
-        painter.drawRoundedRect(rect, 7.5, 7.5)
+        painter.drawRoundedRect(rect, 9.0, 9.0)
 
         c_val = int(200 + 55 * p)
         painter.setBrush(QBrush(QColor(c_val, c_val, c_val)))
         painter.setPen(Qt.PenStyle.NoPen)
         cx = w / 2.0
         cy = h / 2.0 + po
-        r = 1.6
-        painter.drawEllipse(QPointF(cx - 5.5, cy), r, r)
+        r = 1.9
+        painter.drawEllipse(QPointF(cx - 6.0, cy), r, r)
         painter.drawEllipse(QPointF(cx, cy), r, r)
-        painter.drawEllipse(QPointF(cx + 5.5, cy), r, r)
+        painter.drawEllipse(QPointF(cx + 6.0, cy), r, r)
 
 
 # ---------------------------------------------------------------------------
@@ -1972,7 +1993,7 @@ class QuickDockWidget(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(28)
+        self.setFixedHeight(34)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(2, 0, 2, 0)
@@ -2006,7 +2027,7 @@ class QuickDockWidget(QWidget):
         layout.addWidget(self.telemetry_pill)
 
         self.btn_calendar = ActionButton("calendar", "", self)
-        self.btn_calendar.setFixedWidth(96)
+        self.btn_calendar.setFixedWidth(108)
         self.btn_calendar.setToolTip(t("calendar_summary_tooltip"))
         self.btn_calendar.clicked.connect(self.calendar_clicked.emit)
         layout.addWidget(self.btn_calendar)
@@ -2014,16 +2035,16 @@ class QuickDockWidget(QWidget):
 
         # Right: 3 Core Apple Actions
         self.btn_ai = ActionButton("ai_sparkle", t("ai_label"), self)
-        self.btn_ai.setFixedWidth(88)
+        self.btn_ai.setFixedWidth(100)
         self.btn_ai.clicked.connect(self.ai_clicked.emit)
         layout.addWidget(self.btn_ai)
 
         self.btn_pocket = PocketButton(self)
-        self.btn_pocket.setFixedWidth(80)
+        self.btn_pocket.setFixedWidth(92)
         layout.addWidget(self.btn_pocket)
 
         self.btn_lock = ActionButton("lock", t("lock_label"), self)
-        self.btn_lock.setFixedWidth(66)
+        self.btn_lock.setFixedWidth(82)
         self.btn_lock.clicked.connect(self.lock_clicked.emit)
         layout.addWidget(self.btn_lock)
 
@@ -2090,12 +2111,37 @@ class ExpandedDashboard(QWidget):
         super().__init__(parent)
         self.setMinimumSize(0, 0)
         self._duration_sec = 0.0
+        self._media_position_sec = 0.0
+        self._media_position_updated_at = 0.0
+        self._media_is_playing = False
         self._current_section_index: int = -1
         self._fade_anim: Optional[QPropertyAnimation] = None
         self._last_play_toggle_time: float = 0.0  # debounce latch for play/pause
         self._setup_ui()
+        self._media_progress_timer = QTimer(self)
+        self._media_progress_timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._media_progress_timer.setInterval(16)
+        self._media_progress_timer.timeout.connect(self._tick_media_progress)
         I18nManager.get_instance().language_changed.connect(self._on_language_changed)
         self._on_language_changed(I18nManager.get_instance().current_language)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self._media_is_playing and not self._media_progress_timer.isActive():
+            self._media_progress_timer.start()
+
+    def hideEvent(self, event) -> None:
+        self._media_progress_timer.stop()
+        super().hideEvent(event)
+
+    def _tick_media_progress(self) -> None:
+        if not self._media_is_playing or self._duration_sec <= 0:
+            return
+        elapsed = max(0.0, time.monotonic() - self._media_position_updated_at)
+        position = min(self._duration_sec, self._media_position_sec + elapsed)
+        self.lbl_time_cur.setText(self._format_time(position))
+        if not self.scrubber._dragging:
+            self.scrubber.set_value(position / self._duration_sec)
 
     def _on_language_changed(self, _lang: str) -> None:
         self.lbl_sec_1.setText(t("nav_cc_title"))
@@ -2130,6 +2176,7 @@ class ExpandedDashboard(QWidget):
             button.setToolTip(t("back_to_main"))
         if hasattr(self, "ai_input"):
             self.ai_input.setPlaceholderText(t("ai_placeholder"))
+            self.btn_send_ai.setText(t("ai_send"))
 
     def _setup_ui(self) -> None:
         outer = QVBoxLayout(self)
@@ -2146,7 +2193,7 @@ class ExpandedDashboard(QWidget):
 
         # 1. Left Header Stack (Page 0: Media Info | Pages 1,2,3,4: Back Button + Section Title)
         self.header_left_stack = QStackedWidget(self)
-        self.header_left_stack.setFixedSize(160, 40)
+        self.header_left_stack.setFixedSize(148, 40)
 
         # Page 0 Left: Thumbnail & Title/Artist
         page0_left = QWidget()
@@ -2232,7 +2279,7 @@ class ExpandedDashboard(QWidget):
 
         # 2. Middle: Centered Navigation Bar (Clock, Weather & Tabs)
         self.nav_container = QWidget(self)
-        self.nav_container.setFixedSize(336, 34)
+        self.nav_container.setFixedSize(396, 42)
         nav_layout = QHBoxLayout(self.nav_container)
         nav_layout.setContentsMargins(0, 0, 0, 0)
         nav_layout.setSpacing(4)
@@ -2265,7 +2312,7 @@ class ExpandedDashboard(QWidget):
 
         # 3. Right Header Stack (Anchored with fixed width)
         self.header_right_stack = QStackedWidget(self)
-        self.header_right_stack.setFixedSize(130, 40)
+        self.header_right_stack.setFixedSize(150, 40)
 
         # Page 0 Right: Controls (More, Prev, Play/Pause, Next)
         page0_right = QWidget()
@@ -2379,15 +2426,15 @@ class ExpandedDashboard(QWidget):
         self.ai_input.returnPressed.connect(self._on_ai_submit)
         input_row.addWidget(self.ai_input, stretch=1)
 
-        btn_send_ai = QPushButton("Sor")
-        btn_send_ai.setFixedSize(40, 24)
-        btn_send_ai.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_send_ai.setStyleSheet(
+        self.btn_send_ai = QPushButton(t("ai_send"))
+        self.btn_send_ai.setFixedSize(40, 24)
+        self.btn_send_ai.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_send_ai.setStyleSheet(
             "QPushButton { background: rgba(56, 189, 248, 0.25); color: #E0F2FE; font-weight: 600; border-radius: 12px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.45); font-family: 'Segoe UI', 'Segoe UI', sans-serif; }"
             "QPushButton:hover { background: rgba(56, 189, 248, 0.55); color: #FFFFFF; }"
         )
-        btn_send_ai.clicked.connect(self._on_ai_submit)
-        input_row.addWidget(btn_send_ai)
+        self.btn_send_ai.clicked.connect(self._on_ai_submit)
+        input_row.addWidget(self.btn_send_ai)
 
         self.btn_close_ai = QPushButton("✕")
         self.btn_close_ai.setFixedSize(24, 24)
@@ -2728,7 +2775,6 @@ class ExpandedDashboard(QWidget):
     def update_media(self, title: str, artist: str, is_playing: bool,
                      pixmap: Optional[QPixmap],
                      pos_sec: float = 0.0, dur_sec: float = 0.0) -> None:
-        import time
         self.lbl_title.setText(title or t("media_idle_title"))
         self.lbl_artist.setText(artist or (t("media_idle_artist") if not title else "WinIsland"))
         # Debounce: skip play/pause glyph updates within 400ms of a user toggle
@@ -2736,11 +2782,19 @@ class ExpandedDashboard(QWidget):
         if time.monotonic() - self._last_play_toggle_time > 0.4:
             self.btn_play.set_action("pause" if is_playing else "play")
         self.thumb.set_pixmap(pixmap)
-        self._duration_sec = dur_sec
+        self._duration_sec = max(0.0, float(dur_sec))
+        self._media_position_sec = max(0.0, float(pos_sec))
+        self._media_position_updated_at = time.monotonic()
+        self._media_is_playing = bool(is_playing)
+        if self._media_is_playing and self.isVisible():
+            if not self._media_progress_timer.isActive():
+                self._media_progress_timer.start()
+        else:
+            self._media_progress_timer.stop()
         self.lbl_time_cur.setText(self._format_time(pos_sec))
         self.lbl_time_tot.setText(self._format_time(dur_sec))
-        if dur_sec > 0:
-            self.scrubber.set_value(max(0.0, min(1.0, pos_sec / dur_sec)))
+        if self._duration_sec > 0:
+            self.scrubber.set_value(max(0.0, min(1.0, self._media_position_sec / self._duration_sec)))
         else:
             self.scrubber.set_value(0.0)
 
@@ -2749,7 +2803,6 @@ class ExpandedDashboard(QWidget):
         Update the play glyph immediately while Windows handles the media command.
         400ms debounce prevents stale GSMTC async events from reverting the icon.
         """
-        import time
         self._last_play_toggle_time = time.monotonic()
         next_action = "play" if self.btn_play.action_type == "pause" else "pause"
         self.btn_play.set_action(next_action)

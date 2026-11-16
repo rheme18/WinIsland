@@ -6,6 +6,7 @@ Also checks the VIRTUAL_ENV environment variable of child processes.
 
 import os
 import re
+import subprocess
 from typing import Optional
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -16,6 +17,8 @@ except ImportError:
     _PSUTIL_OK = False
 
 POLL_INTERVAL_MS = 5000
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+_PYTHON_VERSION_CACHE: dict[str, str] = {}
 
 
 def _extract_venv_info(exe_path: str) -> Optional[tuple[str, str]]:
@@ -24,22 +27,25 @@ def _extract_venv_info(exe_path: str) -> Optional[tuple[str, str]]:
     Returns (venv_name, python_version) or None.
     """
     try:
+        cache_key = os.path.normcase(os.path.abspath(exe_path))
         norm = exe_path.replace("\\", "/")
         # Windows venv layout: <venv_root>/Scripts/python.exe
         match = re.search(r"/([^/]+)/Scripts/python", norm, re.IGNORECASE)
         if not match:
             return None
         venv_name = match.group(1)
-        # Try to get Python version
-        import subprocess
-        result = subprocess.run(
-            [exe_path, "--version"],
-            capture_output=True, text=True, timeout=3
-        )
-        version_str = (result.stdout + result.stderr).strip()
-        # e.g. "Python 3.11.4"
-        ver_match = re.search(r"Python (\d+\.\d+)", version_str)
-        py_ver = ver_match.group(1) if ver_match else "3.x"
+        py_ver = _PYTHON_VERSION_CACHE.get(cache_key)
+        if py_ver is None:
+            result = subprocess.run(
+                [exe_path, "--version"],
+                capture_output=True, text=True, timeout=3,
+                creationflags=_NO_WINDOW
+            )
+            version_str = (result.stdout + result.stderr).strip()
+            # e.g. "Python 3.11.4"
+            ver_match = re.search(r"Python (\d+\.\d+)", version_str)
+            py_ver = ver_match.group(1) if ver_match else "3.x"
+            _PYTHON_VERSION_CACHE[cache_key] = py_ver
         return venv_name, py_ver
     except Exception:
         return None

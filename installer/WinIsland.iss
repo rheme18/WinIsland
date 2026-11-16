@@ -1,5 +1,5 @@
-﻿#define AppName "WinIsland"
-#define AppVersion "0.9.7"
+#define AppName "WinIsland"
+#define AppVersion "0.9.15"
 #define AppPublisher "WinIsland"
 #define AppExeName "WinIsland.exe"
 

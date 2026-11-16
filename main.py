@@ -33,6 +33,7 @@ from modules.ai_client import AIClient
 from modules.weather import WeatherWorker
 from modules.hardware_monitor import HardwareMonitor
 from modules.brightness import BrightnessManager
+from modules.settings_manager import SettingsManager
 
 
 def create_tray_icon() -> QIcon:
@@ -71,6 +72,9 @@ def main():
     _app_font.setStyleHint(QFont.StyleHint.SansSerif)
     app.setFont(_app_font)
 
+    # Load the installer-selected language before widgets seed any default text.
+    SettingsManager.get_instance()
+
     # ── 1. Primary Dynamic Island Window ─────────────────────────────────
     window = DynamicIslandWindow()
     window.show()
@@ -102,6 +106,7 @@ def main():
     stats_worker.stats_updated.connect(window.on_telemetry_updated)
     stats_worker.critical_state_changed.connect(window.on_critical_state_changed)
     stats_worker.battery_event.connect(window.on_battery_event)
+    stats_worker.system_event.connect(window.on_system_event)
     stats_worker.privacy_changed.connect(window.on_privacy_changed)
     stats_worker.start()
 

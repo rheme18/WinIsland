@@ -5,6 +5,7 @@ Uses Windows power status plus periodic CPU, memory and privacy checks.
 """
 
 import ctypes
+import time
 from ctypes import wintypes
 from dataclasses import dataclass
 from typing import Optional
@@ -13,6 +14,7 @@ import psutil
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from core.config import Timing, Thresholds
+from modules.i18n import t
 
 
 class SYSTEM_POWER_STATUS(ctypes.Structure):
@@ -89,6 +91,7 @@ class SystemStatsWorker(QThread):
     """
     stats_updated = pyqtSignal(object)              # Emits SystemStatsData
     battery_event = pyqtSignal(str, str, str)       # (title, message, icon_type)
+    system_event = pyqtSignal(str, str, str)         # (title, message, icon_type)
     privacy_changed = pyqtSignal(bool, bool)        # (mic_active, cam_active)
     critical_state_changed = pyqtSignal(bool, str)  # (is_critical, message)
 
@@ -104,10 +107,56 @@ class SystemStatsWorker(QThread):
         self._cached_ram_pct: float = 0.0
         self._cached_ram_used: float = 0.0
         self._cached_ram_tot: float = 0.0
+        self._disk_alerts: dict[str, bool] = {}
+        self._next_disk_check: float = 0.0
 
     def stop(self) -> None:
         self._running = False
         self.wait(1000)
+
+    def _check_disk_space(self) -> None:
+        """Notify once when a mounted volume crosses the low-space threshold."""
+        active_disks: set[str] = set()
+        try:
+            partitions = psutil.disk_partitions(all=False)
+        except Exception:
+            return
+
+        for partition in partitions:
+            options = {value.strip().lower() for value in (partition.opts or "").split(",")}
+            if options.intersection({"cdrom", "removable", "remote"}):
+                continue
+
+            key = (partition.device or partition.mountpoint).casefold()
+            if not key:
+                continue
+            active_disks.add(key)
+            try:
+                usage = psutil.disk_usage(partition.mountpoint)
+                percent = float(usage.percent)
+                was_low = self._disk_alerts.get(key, False)
+                is_low = percent >= Thresholds.DISK_LOW_PERCENT
+                if was_low:
+                    is_low = percent > Thresholds.DISK_CLEAR_PERCENT
+                self._disk_alerts[key] = is_low
+
+                if is_low and not was_low:
+                    drive = (partition.device or partition.mountpoint).rstrip("\\/")
+                    free_gb = usage.free / (1024 ** 3)
+                    self.system_event.emit(
+                        t("alert_disk_low_title"),
+                        t("alert_disk_low_message", drive=drive,
+                          percent=f"{percent:.0f}", free_gb=f"{free_gb:.1f}"),
+                        "storage"
+                    )
+            except Exception:
+                continue
+
+        # Forget drives that were unplugged so they can notify again next time.
+        self._disk_alerts = {
+            key: is_low for key, is_low in self._disk_alerts.items()
+            if key in active_disks
+        }
 
     def run(self) -> None:
         try:
@@ -128,8 +177,8 @@ class SystemStatsWorker(QThread):
                 is_low = has_battery and not power_plugged and (battery_percent <= Thresholds.BATTERY_LOW_PERCENT)
                 if is_low and not self._last_battery_low:
                     self.battery_event.emit(
-                        "Düşük Pil Uyarısı",
-                        f"Kalan pil: %{battery_percent}. Lütfen şarja takın.",
+                        t("alert_low_battery_title"),
+                        t("alert_low_battery_message", percent=battery_percent),
                         "battery_low"
                     )
                 self._last_battery_low = is_low
@@ -140,6 +189,11 @@ class SystemStatsWorker(QThread):
                 self._cached_ram_pct = mem.percent
                 self._cached_ram_used = mem.used / (1024 ** 3)
                 self._cached_ram_tot = mem.total / (1024 ** 3)
+
+                now = time.monotonic()
+                if now >= self._next_disk_check:
+                    self._next_disk_check = now + 30.0
+                    self._check_disk_space()
 
                 # Privacy sensors
                 mic_on = check_privacy_sensor("microphone")
@@ -159,13 +213,14 @@ class SystemStatsWorker(QThread):
                 crit_msg = ""
                 if is_critical:
                     if self._cached_cpu >= Thresholds.CPU_CRITICAL_PERCENT and self._cached_ram_pct >= Thresholds.RAM_CRITICAL_PERCENT:
-                        crit_msg = f"CPU %{self._cached_cpu:.0f} & RAM %{self._cached_ram_pct:.0f} aşırı yük altında!"
+                        crit_msg = t("alert_cpu_ram_overload", cpu=f"{self._cached_cpu:.0f}",
+                                      ram=f"{self._cached_ram_pct:.0f}")
                     elif self._cached_cpu >= Thresholds.CPU_CRITICAL_PERCENT:
-                        crit_msg = f"CPU %{self._cached_cpu:.0f} aşırı kullanımda!"
+                        crit_msg = t("alert_cpu_overload_desc", percent=f"{self._cached_cpu:.0f}")
                     elif self._cached_ram_pct >= Thresholds.RAM_CRITICAL_PERCENT:
-                        crit_msg = f"RAM %{self._cached_ram_pct:.0f} neredeyse tamamen doldu!"
+                        crit_msg = t("alert_ram_overload_desc", percent=f"{self._cached_ram_pct:.0f}")
                     else:
-                        crit_msg = "Sistem yoğun yük altında"
+                        crit_msg = t("alert_system_overload_desc")
 
                 if is_critical != self._last_critical:
                     self._last_critical = is_critical

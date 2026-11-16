@@ -10,6 +10,7 @@ import time
 import sys
 from typing import List, Dict, Any, Optional
 from PyQt6.QtCore import QObject, pyqtSignal
+from modules.i18n import t
 
 
 if getattr(sys, "frozen", False):
@@ -78,9 +79,9 @@ class TodoManager(QObject):
         else:
             # Default welcome tasks
             self._items = [
-                TodoItem(str(uuid.uuid4())[:8], "WinIsland'i keşfet", completed=True),
-                TodoItem(str(uuid.uuid4())[:8], "Su iç ve kısa bir mola ver", completed=False),
-                TodoItem(str(uuid.uuid4())[:8], "Bugünkü yapılacakları tamamla", completed=False)
+                TodoItem(str(uuid.uuid4())[:8], t("todo_default_explore"), completed=True),
+                TodoItem(str(uuid.uuid4())[:8], t("todo_default_break"), completed=False),
+                TodoItem(str(uuid.uuid4())[:8], t("todo_default_today"), completed=False)
             ]
             self.save()
 

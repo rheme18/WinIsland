@@ -34,8 +34,11 @@ from ui.widgets import (
 )
 from ui.settings_dialog import ModernSettingsDialog
 from modules.settings_manager import SettingsManager
+from modules.i18n import t
 from modules.media import MediaTrackData
 from modules.system_stats import SystemStatsData, _get_fast_power_status
+
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
 
 class IslandState(Enum):
@@ -110,6 +113,8 @@ class DynamicIslandWindow(QWidget):
         self._dnd_active: bool = False
         self._initial_vol_synced: bool = False
         self._initial_brightness_synced: bool = False
+        self._privacy_mic_active: bool = False
+        self._privacy_cam_active: bool = False
 
         # Pomodoro Focus Timer
         self._pomodoro_active: bool = False
@@ -203,7 +208,6 @@ class DynamicIslandWindow(QWidget):
             Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
@@ -741,6 +745,28 @@ class DynamicIslandWindow(QWidget):
     @pyqtSlot(bool, bool)
     def on_privacy_changed(self, mic_active: bool, cam_active: bool) -> None:
         self.view_compact.set_privacy(mic_active, cam_active)
+        changes = []
+        if mic_active != self._privacy_mic_active:
+            changes.append(t("alert_mic_started" if mic_active else "alert_mic_stopped"))
+            self._privacy_mic_active = mic_active
+        if cam_active != self._privacy_cam_active:
+            changes.append(t("alert_camera_started" if cam_active else "alert_camera_stopped"))
+            self._privacy_cam_active = cam_active
+        if not changes or self._dnd_active:
+            return
+
+        message = " · ".join(changes)
+        if self._is_hovered or self._state == IslandState.EXPANDED:
+            self._has_unread_notification = True
+            self.view_compact.set_notification_badge(True)
+            self._pending_notification_text = message
+            return
+
+        self.view_alert.display(t("alert_privacy_title"), message,
+                                icon_type="system_chip", pixmap=None,
+                                show_visualizer=False)
+        self.transition_to(IslandState.ALERT)
+        self._alert_timer.start(Timing.ALERT_TIMEOUT_MS)
 
     @pyqtSlot(int, bool)
     def on_volume_changed(self, percent: int, is_muted: bool) -> None:
@@ -844,6 +870,21 @@ class DynamicIslandWindow(QWidget):
             self.transition_to(IslandState.ALERT)
             self._alert_timer.start(Timing.ALERT_TIMEOUT_MS)
 
+    @pyqtSlot(str, str, str)
+    def on_system_event(self, title: str, message: str, icon_type: str) -> None:
+        """Show resource warnings without interrupting an open dashboard."""
+        if self._dnd_active:
+            return
+        if self._is_hovered or self._state == IslandState.EXPANDED:
+            self._has_unread_notification = True
+            self.view_compact.set_notification_badge(True)
+            self._pending_notification_text = f"{title}: {message}"
+            return
+        self.view_alert.display(title, message, icon_type=icon_type,
+                                pixmap=None, show_visualizer=False)
+        self.transition_to(IslandState.ALERT)
+        self._alert_timer.start(Timing.ALERT_TIMEOUT_MS)
+
     def _check_fast_battery(self) -> None:
         has_battery, pct, plugged = _get_fast_power_status()
         if not has_battery:
@@ -934,7 +975,10 @@ class DynamicIslandWindow(QWidget):
             self._power_mode_perf = not self._power_mode_perf
             mode_name = t("power_high") if self._power_mode_perf else t("power_balanced")
             guid = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" if self._power_mode_perf else "381b4222-f694-41f0-9685-ff5bb260df2e"
-            subprocess.Popen(f"powercfg /setactive {guid}", shell=True)
+            subprocess.Popen(["powercfg.exe", "/setactive", guid],
+                             creationflags=_NO_WINDOW,
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
             self.view_alert.display(t("alert_power_title"), mode_name, icon_type="battery_charging")
             self.transition_to(IslandState.ALERT)
             self._alert_timer.start(2400)
@@ -978,8 +1022,18 @@ class DynamicIslandWindow(QWidget):
 
     def _bring_music_app(self) -> None:
         try:
-            cmd = """powershell -Command "$p = Get-Process | Where-Object { $_.MainWindowTitle -match 'Spotify|YouTube|Music' } | Select-Object -First 1; if ($p) { (New-Object -ComObject WScript.Shell).AppActivate($p.Id) }" """
-            subprocess.Popen(cmd, shell=True)
+            command = (
+                "$p = Get-Process | Where-Object { $_.MainWindowTitle -match "
+                "'Spotify|YouTube|Music' } | Select-Object -First 1; "
+                "if ($p) { (New-Object -ComObject WScript.Shell).AppActivate($p.Id) }"
+            )
+            subprocess.Popen(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+                creationflags=_NO_WINDOW,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
             self.view_alert.display(t("alert_music_window"), t("alert_brought_forward"), icon_type="music", show_visualizer=False)
             self.transition_to(IslandState.ALERT)
             self._alert_timer.start(2000)
@@ -1004,7 +1058,7 @@ class DynamicIslandWindow(QWidget):
 
     def _open_sound_settings(self) -> None:
         try:
-            os.system("start mmsys.cpl")
+            subprocess.Popen(["control.exe", "mmsys.cpl"], creationflags=_NO_WINDOW)
         except Exception:
             pass
 

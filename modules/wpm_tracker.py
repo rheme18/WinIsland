@@ -51,6 +51,13 @@ class WPMTracker(QThread):
     def _on_key(self, event) -> None:
         """Called on every key-down event (global hook)."""
         try:
+            # Print Screen is handled by Windows' desktop capture path. Keep it
+            # out of the app's global activity/WPM hook so screenshots cannot
+            # trigger any WinIsland-side keyboard or companion work.
+            key_name = str(getattr(event, "name", "")).strip().lower().replace("_", " ")
+            if key_name in {"print screen", "prtsc", "snapshot"}:
+                return
+
             now = time.monotonic()
             self._timestamps.append(now)
             # Prune old timestamps outside the window

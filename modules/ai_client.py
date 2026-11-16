@@ -8,6 +8,7 @@ import json
 import os
 from typing import Optional, List
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from modules.i18n import t
 
 try:
     import google.genai as genai
@@ -87,7 +88,7 @@ class AIWorker(QThread):
 
     def run(self) -> None:
         if not _GENAI_OK:
-            self.error_occurred.emit("google-genai kütüphanesi yüklü değil.")
+            self.error_occurred.emit(t("ai_error_package"))
             return
 
         last_error = ""
@@ -107,9 +108,9 @@ class AIWorker(QThread):
                     last_error = str(ex)
                     continue
 
-            self.error_occurred.emit(f"AI Yanıtı Alınamadı: {last_error[:80]}")
+            self.error_occurred.emit(t("ai_error_request", error=last_error[:80]))
         except Exception as e:
-            self.error_occurred.emit(f"Bağlantı Hatası: {e}")
+            self.error_occurred.emit(t("ai_error_connection", error=str(e)[:120]))
 
 
 class AIClient(QObject):
@@ -131,7 +132,7 @@ class AIClient(QObject):
     def ask(self, prompt: str) -> None:
         api_key = _load_api_key()
         if not api_key:
-            self.response_error.emit("API anahtarı bulunamadı! config.json dosyasına gemini_api_key ekleyin.")
+            self.response_error.emit(t("ai_error_api_key"))
             return
 
         if self._worker and self._worker.isRunning():
